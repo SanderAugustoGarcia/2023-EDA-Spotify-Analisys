@@ -971,43 +971,486 @@ elif modulo == "Correlações":
             com os restantes — capta tendências emergentes antes das playlists editoriais.
         </div>""", unsafe_allow_html=True)
 
+
 # ══════════════════════════════════════════════════════════════════════════════
-# MÓDULO MACHINE LEARNING (placeholder)
+# MÓDULO MACHINE LEARNING
 # ══════════════════════════════════════════════════════════════════════════════
 else:
-    st.markdown("""
+    from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+    from sklearn.model_selection import train_test_split, learning_curve
+    from sklearn.metrics import (r2_score, mean_squared_error,
+                                 accuracy_score, classification_report,
+                                 confusion_matrix)
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    import umap.umap_ as umap_lib
+
+    ML_FEATS = [
+        "bpm","danceability_%","valence_%","energy_%",
+        "acousticness_%","instrumentalness_%","liveness_%","speechiness_%",
+        "in_spotify_playlists","artist_count","released_year","released_month",
+    ]
+    FEAT_LABELS = {
+        "bpm":"BPM","danceability_%":"Danceability","valence_%":"Valence",
+        "energy_%":"Energy","acousticness_%":"Acousticness",
+        "instrumentalness_%":"Instrumentalness","liveness_%":"Liveness",
+        "speechiness_%":"Speechiness","in_spotify_playlists":"Playlists Spotify",
+        "artist_count":"Nº artistas","released_year":"Ano","released_month":"Mês",
+    }
+
+    @st.cache_data
+    def prepare_ml(df, feats):
+        sub = df[feats + ["streams_M"]].dropna()
+        X = sub[feats]
+        y_reg = sub["streams_M"]
+        threshold = y_reg.quantile(0.75)
+        y_clf = (y_reg >= threshold).astype(int)
+        return X, y_reg, y_clf, threshold
+
+    @st.cache_data
+    def run_regression(X_vals, y_vals, n_est, max_d, seed=42):
+        X = pd.DataFrame(X_vals)
+        y = pd.Series(y_vals)
+        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=seed)
+        model = RandomForestRegressor(n_estimators=n_est, max_depth=max_d,
+                                      random_state=seed, n_jobs=-1)
+        model.fit(X_tr, y_tr)
+        y_pred = model.predict(X_te)
+        r2   = r2_score(y_te, y_pred)
+        rmse = mean_squared_error(y_te, y_pred) ** 0.5
+        fi   = pd.Series(model.feature_importances_, index=X.columns)
+        return r2, rmse, fi, y_te.values, y_pred
+
+    @st.cache_data
+    def run_classification(X_vals, y_vals, n_est, max_d, seed=42):
+        X = pd.DataFrame(X_vals)
+        y = pd.Series(y_vals)
+        X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=seed)
+        model = RandomForestClassifier(n_estimators=n_est, max_depth=max_d,
+                                       random_state=seed, n_jobs=-1)
+        model.fit(X_tr, y_tr)
+        y_pred = model.predict(X_te)
+        acc = accuracy_score(y_te, y_pred)
+        cm  = confusion_matrix(y_te, y_pred)
+        fi  = pd.Series(model.feature_importances_, index=X.columns)
+        return acc, cm, fi, y_te.values, y_pred
+
+    @st.cache_data
+    def run_learning_curve(X_vals, y_vals, n_est, max_d, seed=42):
+        X = pd.DataFrame(X_vals)
+        y = pd.Series(y_vals)
+        model = RandomForestRegressor(n_estimators=n_est, max_depth=max_d,
+                                      random_state=seed, n_jobs=-1)
+        sizes = np.linspace(0.1, 1.0, 8)
+        train_sizes, train_scores, val_scores = learning_curve(
+            model, X, y, cv=4, train_sizes=sizes,
+            scoring="r2", n_jobs=-1)
+        return train_sizes, train_scores.mean(axis=1), val_scores.mean(axis=1)
+
+    @st.cache_data
+    def run_umap(X_vals, labels, seed=42):
+        X = pd.DataFrame(X_vals)
+        sc = StandardScaler()
+        Xs = sc.fit_transform(X)
+        reducer = umap_lib.UMAP(n_components=2, random_state=seed, n_neighbors=15, min_dist=0.1)
+        emb = reducer.fit_transform(Xs)
+        return emb[:, 0], emb[:, 1]
+
+    X_all, y_reg, y_clf, threshold = prepare_ml(dff, ML_FEATS)
+
+    # ── Hero
+    st.markdown(f"""
     <div class="hero">
-        <div class="hero-eyebrow">Machine Learning · Em construção</div>
-        <h1 class="hero-title">Previsão<br><span>de sucesso.</span></h1>
-        <p class="hero-sub">Modelo preditivo de streams, clustering avançado e importância de features — em desenvolvimento.</p>
+        <div class="hero-eyebrow">Machine Learning · Spotify 2023</div>
+        <h1 class="hero-title">Prever<br><span>o sucesso.</span></h1>
+        <p class="hero-sub">Modelos interactivos treinados sobre
+        <strong style="color:#e8e6df">{len(X_all):,} músicas</strong> —
+        ajusta os parâmetros e vê o impacto em tempo real.</p>
     </div>
     """, unsafe_allow_html=True)
 
-    cols = st.columns(3, gap="large")
-    items = [
-        ("🎯", "Regressão preditiva", CORAL,
-         "Random Forest / XGBoost para prever streams com base nos atributos musicais. Qual é o R² máximo?"),
-        ("🔵", "Clustering avançado", PURPLE,
-         "UMAP + K-Means com visualização 2D. Os clusters correspondem a géneros reconhecíveis?"),
-        ("📊", "Importância de features", AMBER,
-         "SHAP values — qual atributo tem mais peso no modelo? BPM? Danceability? Playlists?"),
-    ]
-    for col, (icon, title, color, desc) in zip(cols, items):
-        with col:
-            st.markdown(f"""
-            <div style="background:#111;border:1px solid #1a1a1a;border-top:3px solid {color};
-                        border-radius:20px;padding:32px 28px;height:200px">
-                <div style="font-size:28px;margin-bottom:16px">{icon}</div>
-                <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;
-                            color:#fff;margin-bottom:10px">{title}</div>
-                <div style="font-size:13px;color:#555;line-height:1.6">{desc}</div>
-            </div>
-            """, unsafe_allow_html=True)
-    st.markdown("""<div class="insight" style="margin-top:32px">
-        🚧 <strong>Em desenvolvimento.</strong> Este módulo será construído após
-        a análise de correlações — as features identificadas aqui vão alimentar directamente
-        o modelo preditivo.
-    </div>""", unsafe_allow_html=True)
+    # ── Parâmetros globais na sidebar (já está dentro do with st.sidebar acima,
+    # mas os widgets de ML ficam no corpo principal para maior visibilidade)
+    st.markdown("""
+    <div style="background:#111;border:1px solid #1a1a1a;border-radius:16px;
+                padding:24px 28px;margin-bottom:32px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.12em;
+                    text-transform:uppercase;color:#555;margin-bottom:16px">
+            ⚙️ Parâmetros do modelo (aplicam-se a todos os tabs)
+        </div>
+    """, unsafe_allow_html=True)
+
+    pc1, pc2, pc3 = st.columns(3)
+    with pc1:
+        n_est  = st.slider("Nº de árvores (n_estimators)", 50, 500, 200, step=50,
+                           help="Mais árvores = modelo mais estável mas mais lento")
+    with pc2:
+        max_d  = st.slider("Profundidade máxima (max_depth)", 2, 20, 8,
+                           help="Mais profundidade = mais complexo, risco de overfitting")
+    with pc3:
+        st.markdown(f"""
+        <div style="padding:8px 0">
+            <div style="font-size:10px;color:#555;text-transform:uppercase;
+                        letter-spacing:0.1em;margin-bottom:6px">Features usadas</div>
+            <div style="font-size:22px;font-weight:800;color:#fff;
+                        font-family:\'Syne\',sans-serif">{len(ML_FEATS)}</div>
+            <div style="font-size:11px;color:#444;margin-top:4px">
+                atributos musicais + playlists + ano/mês</div>
+        </div>
+        """, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    tab_ml1, tab_ml2, tab_ml3, tab_ml4, tab_ml5 = st.tabs([
+        "Regressão",
+        "Importância de features",
+        "Classificação de sucesso",
+        "Curva de aprendizagem",
+        "UMAP 2D",
+    ])
+
+    # ══ ML1: Regressão ═══════════════════════════════════════════════════════
+    with tab_ml1:
+        st.markdown("""<div class="section-header">
+            <div class="section-number">ML1 · Regressão</div>
+            <h2 class="section-title">Consegues prever<br>o número de streams?</h2>
+            <p class="section-desc">Random Forest Regressor — treino/teste 80/20 · target: streams (M)</p>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("""<div class="insight blue" style="margin-bottom:24px">
+            📖 <strong>O que é R²?</strong> O coeficiente de determinação mede
+            <span class="hl">quanto da variância dos streams o modelo consegue explicar</span>.
+            R²=1.0 seria perfeição; R²=0 significa que o modelo não é melhor do que prever
+            sempre a média. Em dados de música, R²>0.35 já é um resultado interessante.
+        </div>""", unsafe_allow_html=True)
+
+        with st.spinner("A treinar o modelo..."):
+            r2, rmse, fi_reg, y_te_r, y_pred_r = run_regression(
+                X_all.values, y_reg.values, n_est, max_d)
+
+        kc1, kc2, kc3 = st.columns(3)
+        r2_color   = "#1DB954" if r2 > 0.3 else "#F59B23" if r2 > 0.1 else "#E8563A"
+        rmse_color = "#4FC3F7"
+        kc1.markdown(f"""
+        <div class="kpi-card" style="--accent:{r2_color}">
+            <div class="kpi-label">R² (teste)</div>
+            <div class="kpi-value" style="color:{r2_color}">{r2:.3f}</div>
+            <div style="font-size:11px;color:#555;margin-top:8px">
+                {"✓ Bom resultado" if r2>0.3 else "⚠ Moderado" if r2>0.1 else "✗ Fraco"}</div>
+        </div>""", unsafe_allow_html=True)
+        kc2.markdown(f"""
+        <div class="kpi-card" style="--accent:{rmse_color}">
+            <div class="kpi-label">RMSE</div>
+            <div class="kpi-value" style="font-size:36px">{rmse:.0f}<span>M</span></div>
+            <div style="font-size:11px;color:#555;margin-top:8px">erro médio em streams</div>
+        </div>""", unsafe_allow_html=True)
+        kc3.markdown(f"""
+        <div class="kpi-card" style="--accent:#9B72CF">
+            <div class="kpi-label">Músicas no teste</div>
+            <div class="kpi-value" style="font-size:36px">{len(y_te_r)}</div>
+            <div style="font-size:11px;color:#555;margin-top:8px">20% do dataset</div>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div style=\'margin-top:24px\'></div>", unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2, gap="large")
+        with col1:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=y_te_r, y=y_pred_r, mode="markers",
+                marker=dict(color=GREEN, size=5, opacity=0.45),
+                hovertemplate="Real: %{x:.0f}M<br>Previsto: %{y:.0f}M<extra></extra>",
+                name="Previsões"))
+            max_v = max(y_te_r.max(), y_pred_r.max())
+            fig.add_trace(go.Scatter(x=[0, max_v], y=[0, max_v], mode="lines",
+                line=dict(color=CORAL, width=1.5, dash="dash"), name="Perfeito"))
+            spotify_layout(fig, title="Real vs. Previsto (conjunto de teste)",
+                xaxis_title="Streams reais (M)", yaxis_title="Streams previstos (M)",
+                height=380, showlegend=True)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            residuals = y_te_r - y_pred_r
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(
+                x=y_pred_r, y=residuals, mode="markers",
+                marker=dict(color=PURPLE, size=5, opacity=0.45),
+                hovertemplate="Previsto: %{x:.0f}M<br>Resíduo: %{y:.0f}M<extra></extra>"))
+            fig2.add_hline(y=0, line_dash="dash", line_color=CORAL, line_width=1.5)
+            spotify_layout(fig2, title="Resíduos (erro do modelo)",
+                xaxis_title="Streams previstos (M)", yaxis_title="Resíduo (M)", height=380)
+            st.plotly_chart(fig2, use_container_width=True)
+
+        st.markdown(f"""<div class="insight">
+            💡 <strong>Insight:</strong> R² = <span class="hl">{r2:.3f}</span> significa que o modelo
+            explica <span class="hl">{r2*100:.0f}%</span> da variância nos streams.
+            O RMSE de <span class="hl">{rmse:.0f}M</span> indica o erro médio das previsões.
+            {"Os atributos musicais sozinhos têm poder preditivo limitado — factores externos como marketing e virality não estão capturados." if r2 < 0.4 else "Resultado sólido — as features musicais e de playlists têm poder preditivo real."}
+        </div>""", unsafe_allow_html=True)
+
+    # ══ ML2: Importância de features ═════════════════════════════════════════
+    with tab_ml2:
+        st.markdown("""<div class="section-header">
+            <div class="section-number">ML2 · Feature Importance</div>
+            <h2 class="section-title">O que o modelo<br>aprendeu?</h2>
+            <p class="section-desc">Importância de features do Random Forest — qual variável tem mais peso?</p>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("""<div class="insight blue" style="margin-bottom:24px">
+            📖 <strong>O que é Feature Importance?</strong> Mede
+            <span class="hl">quanto cada variável contribui para reduzir o erro</span>
+            nas árvores de decisão. Valores mais altos = variável mais importante para as previsões.
+            É uma das formas mais directas de interpretar um modelo de ML.
+        </div>""", unsafe_allow_html=True)
+
+        with st.spinner("A calcular importâncias..."):
+            _, _, fi_reg, _, _ = run_regression(X_all.values, y_reg.values, n_est, max_d)
+
+        fi_sorted = fi_reg.rename(index=FEAT_LABELS).sort_values(ascending=True)
+        colors_fi = [GREEN if v == fi_sorted.max() else
+                     BLUE  if v >= fi_sorted.quantile(0.7) else GRAY
+                     for v in fi_sorted.values]
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=fi_sorted.values, y=fi_sorted.index.tolist(),
+            orientation="h", marker_color=colors_fi, opacity=0.9,
+            text=[f"{v*100:.1f}%" for v in fi_sorted.values],
+            textposition="outside", textfont=dict(color="#e8e6df", size=11),
+            hovertemplate="%{y}: <b>%{x:.3f}</b><extra></extra>",
+        ))
+        spotify_layout(fig, title="Importância de features — Regressão (streams)",
+            xaxis_title="Importância relativa", height=480)
+        fig.update_layout(margin=dict(l=160, r=100, t=50, b=50))
+        st.plotly_chart(fig, use_container_width=True)
+
+        top1 = fi_sorted.index[-1]
+        top2 = fi_sorted.index[-2]
+        top3 = fi_sorted.index[-3]
+        st.markdown(f"""<div class="insight">
+            💡 <strong>Insight:</strong> As 3 features mais importantes são
+            <span class="hl">{top1}</span>,
+            <span class="hl">{top2}</span> e
+            <span class="hl">{top3}</span>.
+            {"Se Playlists lidera, confirma o que as correlações já sugeriram — a distribuição é o factor mais determinante, não os atributos musicais." if "Playlist" in top1 or "Playlist" in top2 else "Os atributos musicais têm mais peso do que as playlists — surpreendente e diferente do esperado."}
+        </div>""", unsafe_allow_html=True)
+
+    # ══ ML3: Classificação ═══════════════════════════════════════════════════
+    with tab_ml3:
+        st.markdown(f"""<div class="section-header">
+            <div class="section-number">ML3 · Classificação</div>
+            <h2 class="section-title">Hit ou não hit?<br>O modelo decide.</h2>
+            <p class="section-desc">Random Forest Classifier — "hit" = top 25% streams (≥ {threshold:.0f}M)</p>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("""<div class="insight blue" style="margin-bottom:24px">
+            📖 <strong>O que é Accuracy?</strong> A percentagem de músicas
+            <span class="hl">correctamente classificadas</span> como hit ou não-hit.
+            A matriz de confusão mostra onde o modelo erra — falsos positivos (previu hit,
+            não foi) e falsos negativos (não previu hit, foi).
+        </div>""", unsafe_allow_html=True)
+
+        with st.spinner("A treinar classificador..."):
+            acc, cm, fi_clf, y_te_c, y_pred_c = run_classification(
+                X_all.values, y_clf.values, n_est, max_d)
+
+        kc1, kc2, kc3, kc4 = st.columns(4)
+        acc_color = "#1DB954" if acc > 0.75 else "#F59B23" if acc > 0.6 else "#E8563A"
+        tp = cm[1,1]; fp = cm[0,1]; fn = cm[1,0]; tn = cm[0,0]
+        precision = tp/(tp+fp) if (tp+fp) > 0 else 0
+        recall    = tp/(tp+fn) if (tp+fn) > 0 else 0
+
+        kc1.markdown(f"""<div class="kpi-card" style="--accent:{acc_color}">
+            <div class="kpi-label">Accuracy</div>
+            <div class="kpi-value" style="color:{acc_color};font-size:40px">{acc*100:.0f}<span>%</span></div>
+        </div>""", unsafe_allow_html=True)
+        kc2.markdown(f"""<div class="kpi-card" style="--accent:#4FC3F7">
+            <div class="kpi-label">Precision</div>
+            <div class="kpi-value" style="font-size:40px">{precision*100:.0f}<span>%</span></div>
+            <div style="font-size:11px;color:#555;margin-top:4px">hits correctos previstos</div>
+        </div>""", unsafe_allow_html=True)
+        kc3.markdown(f"""<div class="kpi-card" style="--accent:#9B72CF">
+            <div class="kpi-label">Recall</div>
+            <div class="kpi-value" style="font-size:40px">{recall*100:.0f}<span>%</span></div>
+            <div style="font-size:11px;color:#555;margin-top:4px">hits reais detectados</div>
+        </div>""", unsafe_allow_html=True)
+        kc4.markdown(f"""<div class="kpi-card" style="--accent:#F59B23">
+            <div class="kpi-label">F1 Score</div>
+            <div class="kpi-value" style="font-size:40px">{2*precision*recall/(precision+recall+1e-9)*100:.0f}<span>%</span></div>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div style=\'margin-top:24px\'></div>", unsafe_allow_html=True)
+        col1, col2 = st.columns(2, gap="large")
+        with col1:
+            fig = go.Figure(go.Heatmap(
+                z=cm, x=["Não-hit (prev.)","Hit (prev.)"],
+                y=["Não-hit (real)","Hit (real)"],
+                colorscale=[[0,"#0a0a0a"],[1,GREEN]],
+                text=cm, texttemplate="<b>%{text}</b>",
+                textfont=dict(size=20, color="#e8e6df"),
+                hovertemplate="%{y} → %{x}: %{z}<extra></extra>",
+            ))
+            spotify_layout(fig, title="Matriz de confusão", height=380)
+            fig.update_layout(margin=dict(l=120, r=30, t=50, b=80))
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            fi_clf_s = fi_clf.rename(index=FEAT_LABELS).sort_values(ascending=True)
+            colors_fc = [CORAL if v == fi_clf_s.max() else
+                         AMBER if v >= fi_clf_s.quantile(0.7) else GRAY
+                         for v in fi_clf_s.values]
+            fig2 = go.Figure()
+            fig2.add_trace(go.Bar(
+                x=fi_clf_s.values, y=fi_clf_s.index.tolist(),
+                orientation="h", marker_color=colors_fc, opacity=0.9,
+                text=[f"{v*100:.1f}%" for v in fi_clf_s.values],
+                textposition="outside", textfont=dict(color="#e8e6df", size=11),
+                hovertemplate="%{y}: <b>%{x:.3f}</b><extra></extra>"))
+            spotify_layout(fig2, title="Features mais importantes (classificação)",
+                xaxis_title="Importância", height=380)
+            fig2.update_layout(margin=dict(l=160, r=80, t=50, b=50))
+            st.plotly_chart(fig2, use_container_width=True)
+
+        st.markdown(f"""<div class="insight warn">
+            💡 <strong>Insight:</strong> O modelo classifica hits com
+            <span class="hl">{acc*100:.0f}%</span> de accuracy.
+            Precision de <span class="hl">{precision*100:.0f}%</span> significa que
+            quando prevê um hit, acerta <span class="hl">{precision*100:.0f}%</span> das vezes.
+            Recall de <span class="hl">{recall*100:.0f}%</span> indica que detecta
+            <span class="hl">{recall*100:.0f}%</span> dos hits reais.
+        </div>""", unsafe_allow_html=True)
+
+    # ══ ML4: Curva de aprendizagem ════════════════════════════════════════════
+    with tab_ml4:
+        st.markdown("""<div class="section-header">
+            <div class="section-number">ML4 · Curva de aprendizagem</div>
+            <h2 class="section-title">O modelo tem<br>overfitting?</h2>
+            <p class="section-desc">Train vs. Validation score em função do tamanho do dataset</p>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("""<div class="insight blue" style="margin-bottom:24px">
+            📖 <strong>Overfitting vs. Underfitting:</strong>
+            Se o score de treino é muito superior ao de validação →
+            <span class="hl">overfitting</span> (modelo decorou os dados).
+            Se ambos são baixos → <span class="hl">underfitting</span> (modelo simples demais).
+            O ideal é que as duas curvas convirjam num valor alto.
+        </div>""", unsafe_allow_html=True)
+
+        with st.spinner("A calcular curvas de aprendizagem (pode demorar alguns segundos)..."):
+            tr_sizes, tr_scores, val_scores = run_learning_curve(
+                X_all.values, y_reg.values, n_est, max_d)
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=tr_sizes, y=tr_scores, mode="lines+markers",
+            name="Treino", line=dict(color=GREEN, width=2.5),
+            marker=dict(size=8, color=GREEN),
+            hovertemplate="n=%{x}<br>R² treino: %{y:.3f}<extra></extra>"))
+        fig.add_trace(go.Scatter(
+            x=tr_sizes, y=val_scores, mode="lines+markers",
+            name="Validação (CV)", line=dict(color=CORAL, width=2.5, dash="dash"),
+            marker=dict(size=8, color=CORAL),
+            hovertemplate="n=%{x}<br>R² validação: %{y:.3f}<extra></extra>"))
+        fig.add_hrect(y0=max(val_scores)-0.02, y1=max(val_scores)+0.02,
+            fillcolor="rgba(29,185,84,0.05)", line_width=0)
+        spotify_layout(fig, title="Curva de aprendizagem — R² em função do tamanho de treino",
+            xaxis_title="Nº de amostras de treino", yaxis_title="R²",
+            height=440, showlegend=True)
+        st.plotly_chart(fig, use_container_width=True)
+
+        gap = tr_scores[-1] - val_scores[-1]
+        st.markdown(f"""<div class="insight {"warn" if gap > 0.2 else ""}">
+            💡 <strong>Diagnóstico:</strong>
+            Gap treino/validação = <span class="hl">{gap:.3f}</span>.
+            {"⚠️ Gap elevado — sinais de overfitting. Reduz max_depth ou aumenta os dados." if gap > 0.2
+             else "✓ Gap controlado — o modelo generaliza bem para dados não vistos."}
+            R² de validação estabiliza em
+            <span class="hl">{val_scores[-1]:.3f}</span> com o dataset completo.
+        </div>""", unsafe_allow_html=True)
+
+    # ══ ML5: UMAP 2D ══════════════════════════════════════════════════════════
+    with tab_ml5:
+        st.markdown("""<div class="section-header">
+            <div class="section-number">ML5 · UMAP</div>
+            <h2 class="section-title">O espaço das músicas<br>em 2 dimensões.</h2>
+            <p class="section-desc">UMAP reduz 12 dimensões a 2 — cada ponto é uma música</p>
+        </div>""", unsafe_allow_html=True)
+
+        st.markdown("""<div class="insight blue" style="margin-bottom:24px">
+            📖 <strong>O que é UMAP?</strong>
+            <span class="hl">Uniform Manifold Approximation and Projection</span> —
+            um algoritmo que comprime múltiplas dimensões num plano 2D
+            <span class="hl">preservando a estrutura de vizinhança</span>.
+            Músicas parecidas ficam próximas; músicas diferentes ficam afastadas.
+            É das visualizações mais poderosas em DS.
+        </div>""", unsafe_allow_html=True)
+
+        color_by = st.selectbox("Colorir pontos por",
+            ["Era", "Género inferido", "Streams (M)", "Modo (Major/Minor)"])
+
+        with st.spinner("A projectar com UMAP (pode demorar ~10s)..."):
+            sub_umap = dff[ML_FEATS + ["streams_M","era","genre_cluster","mode"]].dropna()
+            x_emb, y_emb = run_umap(sub_umap[ML_FEATS].values,
+                                    sub_umap["era"].values)
+
+        fig = go.Figure()
+        if color_by == "Era":
+            for era in ["Pré-2000","2000s","2010s","2020–2021","2022–2023"]:
+                mask_e = sub_umap["era"] == era
+                if not mask_e.any(): continue
+                fig.add_trace(go.Scatter(
+                    x=x_emb[mask_e], y=y_emb[mask_e], mode="markers",
+                    name=era, marker=dict(color=ERA_COLORS.get(era,GRAY), size=4, opacity=0.55),
+                    hovertemplate=f"<b>{era}</b><br>%{{customdata}}<extra></extra>",
+                    customdata=sub_umap.loc[mask_e, "streams_M"].round(0).astype(str) + "M"))
+            showleg = True
+
+        elif color_by == "Género inferido":
+            for g, c in GENRE_COLORS.items():
+                mask_g = sub_umap["genre_cluster"] == g
+                if not mask_g.any(): continue
+                fig.add_trace(go.Scatter(
+                    x=x_emb[mask_g], y=y_emb[mask_g], mode="markers",
+                    name=g, marker=dict(color=c, size=4, opacity=0.55),
+                    hovertemplate=f"<b>{g}</b><br>%{{customdata}}<extra></extra>",
+                    customdata=sub_umap.loc[mask_g,"streams_M"].round(0).astype(str)+"M"))
+            showleg = True
+
+        elif color_by == "Streams (M)":
+            fig.add_trace(go.Scatter(
+                x=x_emb, y=y_emb, mode="markers",
+                marker=dict(color=np.log10(sub_umap["streams_M"].clip(lower=0.01)),
+                            colorscale=[[0,"#0f3d22"],[1,GREEN]],
+                            size=4, opacity=0.6, showscale=True,
+                            colorbar=dict(title="log₁₀(M)", tickfont=dict(color=GRAY))),
+                hovertemplate="Streams: %{customdata:.0f}M<extra></extra>",
+                customdata=sub_umap["streams_M"]))
+            showleg = False
+
+        else:  # Modo
+            for m, c in [("Major", GREEN), ("Minor", CORAL)]:
+                mask_m = sub_umap["mode"] == m
+                if not mask_m.any(): continue
+                fig.add_trace(go.Scatter(
+                    x=x_emb[mask_m], y=y_emb[mask_m], mode="markers",
+                    name=m, marker=dict(color=c, size=4, opacity=0.55),
+                    hovertemplate=f"<b>{m}</b><extra></extra>"))
+            showleg = True
+
+        spotify_layout(fig, title=f"UMAP 2D — colorido por {color_by}",
+            xaxis_title="UMAP 1", yaxis_title="UMAP 2",
+            height=520, showlegend=showleg)
+        fig.update_xaxes(showgrid=False, zeroline=False)
+        fig.update_yaxes(showgrid=False, zeroline=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(f"""<div class="insight purple">
+            💡 <strong>Insight:</strong> O UMAP revela a
+            <span class="hl">estrutura latente do espaço musical</span>.
+            Clusters visíveis confirmam que os atributos musicais têm poder
+            discriminante — músicas parecidas agrupam-se naturalmente.
+            Muda a coloração para explorar diferentes perspectivas dos mesmos dados.
+        </div>""", unsafe_allow_html=True)
+
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("""
