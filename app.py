@@ -1223,9 +1223,9 @@ else:
         fig.update_layout(margin=dict(l=160, r=100, t=50, b=50))
         st.plotly_chart(fig, use_container_width=True)
 
-        top1 = fi_sorted.index[-1]
-        top2 = fi_sorted.index[-2]
-        top3 = fi_sorted.index[-3]
+        top1 = str(fi_sorted.index[-1])
+        top2 = str(fi_sorted.index[-2])
+        top3 = str(fi_sorted.index[-3])
         playlist_msg = (
             "Se Playlists lidera, confirma o que as correlações já sugeriram "
             "— a distribuição é o factor mais determinante, não os atributos musicais."
@@ -1233,13 +1233,15 @@ else:
             else "Os atributos musicais têm mais peso do que as playlists "
                  "— surpreendente e diferente do esperado."
         )
-        st.markdown(f"""<div class="insight">
-            💡 <strong>Insight:</strong> As 3 features mais importantes são
-            <span class="hl">{top1}</span>,
-            <span class="hl">{top2}</span> e
-            <span class="hl">{top3}</span>.
-            {playlist_msg}
-        </div>""", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='insight'>"
+            "💡 <strong>Insight:</strong> As 3 features mais importantes são "
+            f"<span class='hl'>{top1}</span>, "
+            f"<span class='hl'>{top2}</span> e "
+            f"<span class='hl'>{top3}</span>. "
+            f"{playlist_msg}"
+            "</div>",
+            unsafe_allow_html=True)
 
     # ══ ML3: Classificação ═══════════════════════════════════════════════════
     with tab_ml3:
