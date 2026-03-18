@@ -26,7 +26,7 @@ Análise exploratória das **952 músicas mais ouvidas no Spotify em 2023**, com
 O projecto cobre o pipeline completo de um projecto de dados real:
 
 ```
-Raw CSV  →  ETL (limpeza + features)  →  EDA (4 perguntas de negócio)  →  Dashboard interactivo
+Raw CSV  →  ETL (limpeza + features)  →  EDA (4 perguntas de negócio) → Correlação Estatística → Machine Learning →  Dashboard interactivo
 ```
 
 > **Dataset:** [Most Streamed Spotify Songs 2023](https://www.kaggle.com/datasets/nelgiriyewithana/top-spotify-songs-2023) — Kaggle
