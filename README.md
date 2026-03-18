@@ -141,11 +141,3 @@ streamlit run app.py
 
 ---
 
-## 📈 Próximos passos
-
-- [ ] **Secção 2 — Correlações:** que atributos musicais (BPM, energy, danceability) mais se correlacionam com streams?
-- [ ] **Secção 3 — Teste de hipóteses:** modo Maior vs. Menor tem impacto estatisticamente significativo?
-- [ ] **Secção 4 — Clustering:** que perfis de músicas emergem sem usar o género como label?
-- [ ] **Secção 5 — Modelo preditivo:** é possível prever streams a partir de atributos musicais?
-
----
