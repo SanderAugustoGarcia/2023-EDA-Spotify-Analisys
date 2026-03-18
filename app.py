@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+import plotly.io as pio
 from plotly.subplots import make_subplots
 
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -115,20 +116,19 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Plotly template Spotify ───────────────────────────────────────────────────
-SPOTIFY_TEMPLATE = go.layout.Template(
-    layout=go.Layout(
-        paper_bgcolor="#121212",
-        plot_bgcolor="#1E1E1E",
-        font=dict(family="DM Sans", color="#B3B3B3", size=12),
-        title=dict(font=dict(color="#FFFFFF", size=15, family="DM Sans"), x=0.01),
-        xaxis=dict(gridcolor="#282828", linecolor="#282828", tickcolor="#535353", zerolinecolor="#282828"),
-        yaxis=dict(gridcolor="#282828", linecolor="#282828", tickcolor="#535353", zerolinecolor="#282828"),
-        colorway=["#1DB954","#E8563A","#F59B23","#9B72CF","#4FC3F7","#B3B3B3"],
-        legend=dict(bgcolor="#1E1E1E", bordercolor="#282828", borderwidth=1, font=dict(color="#B3B3B3")),
-        margin=dict(l=50, r=30, t=50, b=50),
-        hoverlabel=dict(bgcolor="#282828", bordercolor="#535353", font=dict(color="#FFFFFF", size=12)),
-    )
-)
+_t = go.layout.Template()
+_t.layout.paper_bgcolor = "#121212"
+_t.layout.plot_bgcolor  = "#1E1E1E"
+_t.layout.font          = dict(family="DM Sans", color="#B3B3B3", size=12)
+_t.layout.title         = dict(font=dict(color="#FFFFFF", size=15, family="DM Sans"), x=0.01)
+_t.layout.xaxis         = dict(gridcolor="#282828", linecolor="#282828", tickcolor="#535353", zerolinecolor="#282828")
+_t.layout.yaxis         = dict(gridcolor="#282828", linecolor="#282828", tickcolor="#535353", zerolinecolor="#282828")
+_t.layout.colorway      = ["#1DB954","#E8563A","#F59B23","#9B72CF","#4FC3F7","#B3B3B3"]
+_t.layout.legend        = dict(bgcolor="#1E1E1E", bordercolor="#282828", borderwidth=1, font=dict(color="#B3B3B3"))
+_t.layout.margin        = dict(l=50, r=30, t=50, b=50)
+_t.layout.hoverlabel    = dict(bgcolor="#282828", bordercolor="#535353", font=dict(color="#FFFFFF", size=12))
+pio.templates["spotify"] = _t
+SPOTIFY_TEMPLATE = "spotify"
 
 # ── Cores ─────────────────────────────────────────────────────────────────────
 GREEN  = "#1DB954"
