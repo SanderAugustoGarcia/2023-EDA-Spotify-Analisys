@@ -1,5 +1,24 @@
 # 🎵 Spotify 2023 — ETL & Análise Exploratória de Dados
 
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)
+![Pandas](https://img.shields.io/badge/Pandas-2.0-150458?style=flat&logo=pandas&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-5.18-3F4F75?style=flat&logo=plotly&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.32-FF4B4B?style=flat&logo=streamlit&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?style=flat&logo=jupyter&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Completo-1DB954?style=flat)
+
+> Desenvolvido por **[Sander Augusto Garcia](https://github.com/SanderAugustoGarcia)**
+
+---
+
+## 🚀 Live Demo
+
+> **👉 [Abrir Dashboard Interactivo](https://edaspotify.streamlit.app)**
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_dark.svg)](https://edaspotify.streamlit.app)
+
+---
+
 ## 📌 Sobre o projecto
 
 Análise exploratória das **952 músicas mais ouvidas no Spotify em 2023**, combinando atributos musicais técnicos (BPM, danceability, energy…) com métricas reais de negócio em 4 plataformas: **Spotify, Apple Music, Deezer e Shazam**.
@@ -114,7 +133,7 @@ spotify-2023-eda/
 
 ```bash
 # 1. Clonar o repositório
-git clone https://github.com/SEU-USER/spotify-2023-eda.git
+git clone https://github.com/SanderAugustoGarcia/spotify-2023-eda.git
 cd spotify-2023-eda
 
 # 2. Instalar dependências
@@ -141,3 +160,16 @@ streamlit run app.py
 
 ---
 
+## 📈 Próximos passos
+
+- [ ] **Secção 2 — Correlações:** que atributos musicais (BPM, energy, danceability) mais se correlacionam com streams?
+- [ ] **Secção 3 — Teste de hipóteses:** modo Maior vs. Menor tem impacto estatisticamente significativo?
+- [ ] **Secção 4 — Clustering:** que perfis de músicas emergem sem usar o género como label?
+- [ ] **Secção 5 — Modelo preditivo:** é possível prever streams a partir de atributos musicais?
+
+---
+
+<p align="center">
+  Desenvolvido por <strong>Sander Augusto Garcia</strong><br>
+  <a href="https://github.com/SanderAugustoGarcia">github.com/SanderAugustoGarcia</a>
+</p>
