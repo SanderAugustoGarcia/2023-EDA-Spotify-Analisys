@@ -442,7 +442,7 @@ with tab5:
     top_df.index += 1
     top_df["Streams (M)"] = top_df["Streams (M)"].round(0).astype(int)
     st.dataframe(
-        top_df.style.background_gradient(subset=["Streams (M)"], cmap="Greens"),
+        top_df,
         use_container_width=True, height=500,
     )
 
