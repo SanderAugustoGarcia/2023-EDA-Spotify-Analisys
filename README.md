@@ -194,15 +194,6 @@ streamlit run app.py
 
 ---
 
-## 📈 Next steps
-
-- [ ] **SHAP values** — deeper model interpretability beyond feature importance
-- [ ] **XGBoost** — compare performance against Random Forest
-- [ ] **Time series** — stream evolution over time for top artists
-- [ ] **NLP** — analyse track name patterns in hit songs
-
----
-
 <p align="center">
   Developed by <strong>Sander Augusto Garcia</strong><br>
   <a href="https://github.com/SanderAugustoGarcia">github.com/SanderAugustoGarcia</a>
