@@ -204,9 +204,10 @@ def cluster_genres(df):
             genre_map[i] = "Pop energético"
         else:
             genre_map[i] = "R&B / Soul"
+    genre_labels = pd.Series("Unknown", index=df.index, dtype="object")
+    genre_labels.loc[sub.index] = [genre_map[l] for l in labels]
     result = df.copy()
-    result["genre_cluster"] = np.nan
-    result.loc[sub.index, "genre_cluster"] = [genre_map[l] for l in labels]
+    result["genre_cluster"] = genre_labels
     return result
 
 df = load_data()
