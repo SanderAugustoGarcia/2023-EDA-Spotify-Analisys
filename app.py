@@ -1000,7 +1000,6 @@ else:
         "artist_count":"Nº artistas","released_year":"Ano","released_month":"Mês",
     }
 
-    @st.cache_data
     def prepare_ml(df, feats):
         sub = df[feats + ["streams_M"]].dropna()
         X = sub[feats]
@@ -1009,10 +1008,7 @@ else:
         y_clf = (y_reg >= threshold).astype(int)
         return X, y_reg, y_clf, threshold
 
-    @st.cache_data
-    def run_regression(X_vals, y_vals, n_est, max_d, seed=42):
-        X = pd.DataFrame(X_vals)
-        y = pd.Series(y_vals)
+    def run_regression(X, y, n_est, max_d, seed=42):
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=seed)
         model = RandomForestRegressor(n_estimators=n_est, max_depth=max_d,
                                       random_state=seed, n_jobs=-1)
@@ -1023,10 +1019,7 @@ else:
         fi   = pd.Series(model.feature_importances_, index=X.columns)
         return r2, rmse, fi, y_te.values, y_pred
 
-    @st.cache_data
-    def run_classification(X_vals, y_vals, n_est, max_d, seed=42):
-        X = pd.DataFrame(X_vals)
-        y = pd.Series(y_vals)
+    def run_classification(X, y, n_est, max_d, seed=42):
         X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=seed)
         model = RandomForestClassifier(n_estimators=n_est, max_depth=max_d,
                                        random_state=seed, n_jobs=-1)
@@ -1037,10 +1030,7 @@ else:
         fi  = pd.Series(model.feature_importances_, index=X.columns)
         return acc, cm, fi, y_te.values, y_pred
 
-    @st.cache_data
-    def run_learning_curve(X_vals, y_vals, n_est, max_d, seed=42):
-        X = pd.DataFrame(X_vals)
-        y = pd.Series(y_vals)
+    def run_learning_curve(X, y, n_est, max_d, seed=42):
         model = RandomForestRegressor(n_estimators=n_est, max_depth=max_d,
                                       random_state=seed, n_jobs=-1)
         sizes = np.linspace(0.1, 1.0, 8)
@@ -1049,15 +1039,18 @@ else:
             scoring="r2", n_jobs=-1)
         return train_sizes, train_scores.mean(axis=1), val_scores.mean(axis=1)
 
-    @st.cache_data
-    def run_umap(X_vals, seed=42):
-        """X_vals must be a numpy float array — no object arrays."""
-        X = pd.DataFrame(X_vals.astype(float))
+    def run_umap(X, seed=42):
         sc = StandardScaler()
-        Xs = sc.fit_transform(X)
+        Xs = sc.fit_transform(X.astype(float))
         reducer = umap_lib.UMAP(n_components=2, random_state=seed, n_neighbors=15, min_dist=0.1)
         emb = reducer.fit_transform(Xs)
         return emb[:, 0], emb[:, 1]
+
+    # ── Cache via session_state keyed on (n_estimators, max_depth, nrows)
+    _cache_key = f"{n_est}_{max_d}_{len(dff)}"
+    if "ml_cache_key" not in st.session_state or st.session_state["ml_cache_key"] != _cache_key:
+        st.session_state["ml_cache_key"] = _cache_key
+        st.session_state["ml_cache"] = {}
 
     X_all, y_reg, y_clf, threshold = prepare_ml(dff, ML_FEATS)
 
@@ -1123,9 +1116,10 @@ else:
             sempre a média. Em dados de música, R²>0.35 já é um resultado interessante.
         </div>""", unsafe_allow_html=True)
 
-        with st.spinner(t("ml1_training", lang)):
-            r2, rmse, fi_reg, y_te_r, y_pred_r = run_regression(
-                X_all.values, y_reg.values, n_est, max_d)
+        _rk = f"reg_{_cache_key}"
+        if _rk not in st.session_state["ml_cache"]:
+            st.session_state["ml_cache"][_rk] = run_regression(X_all, y_reg, n_est, max_d)
+        r2, rmse, fi_reg, y_te_r, y_pred_r = st.session_state["ml_cache"][_rk]
 
         kc1, kc2, kc3 = st.columns(3)
         r2_color   = "#1DB954" if r2 > 0.3 else "#F59B23" if r2 > 0.1 else "#E8563A"
@@ -1202,8 +1196,10 @@ else:
             É uma das formas mais directas de interpretar um modelo de ML.
         </div>""", unsafe_allow_html=True)
 
-        with st.spinner(t("ml2_spinner", lang)):
-            _, _, fi_reg, _, _ = run_regression(X_all.values, y_reg.values, n_est, max_d)
+        _rk = f"reg_{_cache_key}"
+        if _rk not in st.session_state["ml_cache"]:
+            st.session_state["ml_cache"][_rk] = run_regression(X_all, y_reg, n_est, max_d)
+        _, _, fi_reg, _, _ = st.session_state["ml_cache"][_rk]
 
         fi_sorted = fi_reg.rename(index=FEAT_LABELS).sort_values(ascending=True)
         colors_fi = [GREEN if v == fi_sorted.max() else
@@ -1258,9 +1254,10 @@ else:
             não foi) e falsos negativos (não previu hit, foi).
         </div>""", unsafe_allow_html=True)
 
-        with st.spinner(t("ml3_spinner", lang)):
-            acc, cm, fi_clf, y_te_c, y_pred_c = run_classification(
-                X_all.values, y_clf.values, n_est, max_d)
+        _ck = f"clf_{_cache_key}"
+        if _ck not in st.session_state["ml_cache"]:
+            st.session_state["ml_cache"][_ck] = run_classification(X_all, y_clf, n_est, max_d)
+        acc, cm, fi_clf, y_te_c, y_pred_c = st.session_state["ml_cache"][_ck]
 
         kc1, kc2, kc3, kc4 = st.columns(4)
         acc_color = "#1DB954" if acc > 0.75 else "#F59B23" if acc > 0.6 else "#E8563A"
@@ -1344,9 +1341,10 @@ else:
             O ideal é que as duas curvas convirjam num valor alto.
         </div>""", unsafe_allow_html=True)
 
-        with st.spinner(t("ml4_spinner", lang)):
-            tr_sizes, tr_scores, val_scores = run_learning_curve(
-                X_all.values, y_reg.values, n_est, max_d)
+        _lk = f"lc_{_cache_key}"
+        if _lk not in st.session_state["ml_cache"]:
+            st.session_state["ml_cache"][_lk] = run_learning_curve(X_all, y_reg, n_est, max_d)
+        tr_sizes, tr_scores, val_scores = st.session_state["ml_cache"][_lk]
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -1398,7 +1396,10 @@ else:
 
         with st.spinner(t("ml5_spinner", lang)):
             sub_umap = dff[ML_FEATS + ["streams_M","era","genre_cluster","mode"]].dropna()
-            x_emb, y_emb = run_umap(sub_umap[ML_FEATS].values.astype(float))
+            _uk = f"umap_{_cache_key}"
+            if _uk not in st.session_state["ml_cache"]:
+                st.session_state["ml_cache"][_uk] = run_umap(sub_umap[ML_FEATS].values)
+            x_emb, y_emb = st.session_state["ml_cache"][_uk]
 
         fig = go.Figure()
         _cb_era = _ml5_opts[0]
@@ -1463,19 +1464,6 @@ else:
             Muda a coloração para explorar diferentes perspectivas dos mesmos dados.
         </div>""", unsafe_allow_html=True)
 
-
-# ── Footer ────────────────────────────────────────────────────────────────────
-st.markdown(f"""
-<hr>
-<div style="display:flex;justify-content:space-between;align-items:center;
-            padding:8px 0 24px;color:#2a2a2a;font-size:12px">
-    <span>{t('footer_left', lang)}</span>
-    <span>{t('footer_dev_by', lang)}
-        <a href="https://github.com/SanderAugustoGarcia"
-           style="color:#1DB954;text-decoration:none">Sander Augusto Garcia</a>
-    </span>
-</div>
-""", unsafe_allow_html=True)
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(f"""
